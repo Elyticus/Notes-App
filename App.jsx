@@ -1,20 +1,20 @@
-import React, { useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import Editor from "./components/Editor";
 import Split from "react-split";
-import { addDoc, onSnapshot, doc, deleteDoc, setDoc } from "firebase/firestore";
+import { onSnapshot, addDoc, doc, deleteDoc, setDoc } from "firebase/firestore";
+import { useEffect, useState } from "react";
 import { notesCollection, db } from "./firebase";
-
 export default function App() {
-  const [notes, setNotes] = React.useState([]);
-  const [currentNoteId, setCurrentNoteId] = React.useState("");
+  const [notes, setNotes] = useState([]);
+  const [currentNoteId, setCurrentNoteId] = useState("");
+  const [tempNoteText, setTempNoteText] = useState("");
 
   const currentNote =
     notes.find((note) => note.id === currentNoteId) || notes[0];
 
   const sortedNotes = notes.sort((a, b) => b.updatedAt - a.updatedAt);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const unsubscribe = onSnapshot(notesCollection, function (snapshot) {
       const notesArr = snapshot.docs.map((doc) => ({
         ...doc.data(),
@@ -30,6 +30,21 @@ export default function App() {
       setCurrentNoteId(notes[0]?.id);
     }
   }, [notes]);
+
+  useEffect(() => {
+    if (currentNote) {
+      setTempNoteText(currentNote.body);
+    }
+  }, [currentNote]);
+
+  useEffect(() => {
+    const timeOutID = setTimeout(() => {
+      if (tempNoteText !== currentNote.body) {
+        updateNote(tempNoteText);
+      }
+    }, 500);
+    return () => clearTimeout(timeOutID);
+  }, [tempNoteText]);
 
   async function createNewNote() {
     const newNote = {
@@ -66,8 +81,10 @@ export default function App() {
             newNote={createNewNote}
             deleteNote={deleteNote}
           />
-
-          <Editor currentNote={currentNote} updateNote={updateNote} />
+          <Editor
+            tempNoteText={tempNoteText}
+            setTempNoteText={setTempNoteText}
+          />
         </Split>
       ) : (
         <div className="no-notes">
